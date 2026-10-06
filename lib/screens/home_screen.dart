@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:zentri_vendedor/main.dart';
 import 'package:zentri_vendedor/screens/catalogo_screen.dart';
@@ -207,16 +208,21 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color(0xFF1e293b),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () => _mostrarLogs(context),
-            tooltip: 'Ver logs',
-          ),
-          IconButton(
-            icon: const Icon(Icons.medical_services),
-            onPressed: () => _mostrarDiagnostico(context),
-            tooltip: 'Diagnóstico offline',
-          ),
+          // ============================================================
+          // ÍCONOS DE DEBUG (solo visibles en flutter run, NO en release)
+          // ============================================================
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.bug_report),
+              onPressed: () => _mostrarLogs(context),
+              tooltip: 'Ver logs',
+            ),
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.medical_services),
+              onPressed: () => _mostrarDiagnostico(context),
+              tooltip: 'Diagnóstico offline',
+            ),
           // ============================================================
           // ÍCONO DE NOTIFICACIONES DE COBRO CON BADGE
           // ============================================================
