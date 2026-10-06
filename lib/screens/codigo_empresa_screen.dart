@@ -5,13 +5,10 @@ import 'package:zentri_vendedor/utils/logger.dart';
 
 /// Pantalla que se muestra cuando la app no tiene empresa configurada.
 /// El usuario ingresa un código corto (slug) y la app construye la URL.
-///
-/// Ejemplos:
-///   "hiferco"  →  https://hiferco.sistemazentri.com
-///   "imaginar" →  https://imaginar.sistemazentri.com
 class CodigoEmpresaScreen extends StatefulWidget {
   /// Callback que se llama cuando el usuario ya configuró la empresa.
-  final VoidCallback onConfigurado;
+  /// Recibe el BuildContext de esta pantalla para poder navegar.
+  final void Function(BuildContext context) onConfigurado;
 
   const CodigoEmpresaScreen({super.key, required this.onConfigurado});
 
@@ -69,7 +66,7 @@ class _CodigoEmpresaScreenState extends State<CodigoEmpresaScreen> {
 
     AppLogger.log('✅ [CodigoEmpresa] Configurada empresa: $slug');
     AppLogger.log('✅ [CodigoEmpresa] URL base: ${ApiConfig.instance.baseUrl}');
-    widget.onConfigurado();
+    widget.onConfigurado(context);
   }
 
   @override
@@ -130,7 +127,6 @@ class _CodigoEmpresaScreenState extends State<CodigoEmpresaScreen> {
                 onSubmitted: (_) => _guardar(),
                 decoration: InputDecoration(
                   labelText: 'Código de empresa',
-                  hintText: 'hiferco',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

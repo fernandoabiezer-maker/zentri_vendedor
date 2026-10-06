@@ -615,7 +615,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              const Text('Zentri - HIFERCO',
+                            const Text('Zentri',
                   style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1e293b))),
               const Text('Vendedor', style: TextStyle(fontSize: 16, color: Colors.grey)),
               const SizedBox(height: 40),
@@ -666,8 +666,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
+                            const SizedBox(height: 16),
               Text('Versión 1.0.0', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.swap_horiz, size: 16),
+                label: const Text('Cambiar empresa'),
+                onPressed: () async {
+                  // Borra el slug guardado y vuelve a la pantalla de configurar.
+                  await ApiConfig.instance.borrarEmpresa();
+                  if (!context.mounted) return;
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => CodigoEmpresaScreen(
+                        onConfigurado: (ctx) {
+                          Navigator.of(ctx).pushReplacement(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
+              ),
             ],
           ),
         ),
@@ -721,11 +743,14 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1e293b)),
           useMaterial3: true,
         ),
-        home: ApiConfig.instance.hayEmpresa
+                home: ApiConfig.instance.hayEmpresa
             ? const LoginScreen()
-            : CodigoEmpresaScreen(onConfigurado: () {
-                // Una vez configurada, reconstruye la app para mostrar Login.
-                runApp(const MyApp());
+            : CodigoEmpresaScreen(onConfigurado: (ctx) {
+                // Una vez configurada, navega al Login sin reconstruir
+                // todo el árbol de widgets (evita el cuelgue de runApp).
+                Navigator.of(ctx).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
               }),
         debugShowCheckedModeBanner: false,
         routes: {
