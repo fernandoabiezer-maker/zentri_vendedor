@@ -1,28 +1,13 @@
-import 'package:zentri_vendedor/config/api_config.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:zentri_vendedor/models/cliente_deuda.dart';
 import 'package:zentri_vendedor/models/abono.dart';
+import 'package:zentri_vendedor/services/api_dio.dart';
 
 class CuentasPorCobrarService {
-  final Dio _dio = Dio();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-
-  CuentasPorCobrarService() {
-    _dio.options.baseUrl = ApiConfig.instance.baseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 10);
-    _dio.options.receiveTimeout = const Duration(seconds: 20);
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'access_token');
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-    ));
-  }
+  /// Dio compartido con interceptor global de 401.
+  /// Si el server revoca la sesión, ApiDio dispara el logout automático.
+  final Dio _dio = ApiDio.instance;
 
   Future<Map<String, dynamic>> obtenerMisDeudores({
     int page = 1,

@@ -25,6 +25,7 @@ import 'package:zentri_vendedor/providers/tasas_provider.dart';
 import 'package:zentri_vendedor/providers/configuracion_provider.dart';
 import 'package:zentri_vendedor/providers/sync_provider.dart';
 import 'package:zentri_vendedor/services/connection_watcher.dart';
+import 'package:zentri_vendedor/services/api_dio.dart';
 import 'package:zentri_vendedor/config/api_config.dart';
 import 'package:zentri_vendedor/screens/codigo_empresa_screen.dart';
 import 'package:zentri_vendedor/providers/cliente_provider.dart';
@@ -37,6 +38,17 @@ import 'package:zentri_vendedor/providers/producto_provider.dart';
 import 'package:zentri_vendedor/utils/logger.dart';
 import 'package:zentri_vendedor/screens/home_screen.dart';
 
+
+// ============================================================
+// EXCEPCIÓN: CREDENCIALES INVÁLIDAS (401 del server)
+// Se distingue de errores de red para NO usar el fallback offline.
+// ============================================================
+class CredencialesInvalidasException implements Exception {
+  final String mensaje;
+  CredencialesInvalidasException(this.mensaje);
+  @override
+  String toString() => mensaje;
+}
 
 // ============================================================
 // MODELO DE USUARIO
@@ -69,30 +81,13 @@ class Usuario {
 
 // ============================================================
 // API CLIENT (GESTIÓN DE TOKENS Y LOGIN)
+// Usa el Dio compartido de toda la app (ApiDio.instance).
 // ============================================================
 class ApiClient {
-  final Dio dio = Dio();
+  final Dio dio = ApiDio.instance;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  ApiClient() {
-    dio.options.baseUrl = ApiConfig.instance.baseUrl;
-    dio.options.connectTimeout = const Duration(seconds: 3);
-    dio.options.receiveTimeout = const Duration(seconds: 3);
-
-    if (kIsWeb) {
-      dio.options.extra['withCredentials'] = false;
-    }
-
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'access_token');
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-    ));
-  }
+  ApiClient();
 
   Future<void> guardarToken(String token) async {
     await _storage.write(key: 'access_token', value: token);
@@ -159,8 +154,23 @@ class ApiClient {
 
         return usuario;
       } else {
-        throw Exception(response.data['mensaje'] ?? 'Error en login');
+        throw CredencialesInvalidasException(
+          (response.data['mensaje'] ?? 'Usuario o contraseña incorrectos')
+              .toString(),
+        );
       }
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 401 || code == 403) {
+        final data = e.response?.data;
+        final msg = (data is Map && data['mensaje'] != null)
+            ? data['mensaje'].toString()
+            : 'Usuario o contraseña incorrectos';
+        throw CredencialesInvalidasException(msg);
+      }
+      throw Exception('Error de conexión: $e');
+    } on CredencialesInvalidasException {
+      rethrow;
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
@@ -230,6 +240,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _validarSesionLocal() async {
     final authProvider = context.read<AuthProvider>();
+    final tokenEnStorage = await _api.obtenerToken();
+
+    // Caso 1: hay sesión en memoria pero el token ya no es válido.
     if (authProvider.isAuthenticated && !authProvider.tokenValid) {
       await authProvider.logout();
       await _api.eliminarCredenciales();
@@ -241,6 +254,20 @@ class _LoginScreenState extends State<LoginScreen> {
             duration: Duration(seconds: 4),
           ),
         );
+      }
+      return;
+    }
+
+    // Caso 2: hay sesión en memoria PERO el storage no tiene token.
+    // Esto pasa cuando el interceptor borró el token tras un 401 pero
+    // el AuthProvider en memoria seguía diciendo "autenticado".
+    if (authProvider.isAuthenticated &&
+        (tokenEnStorage == null || tokenEnStorage.isEmpty)) {
+      AppLogger.log(
+          '🔒 [LoginScreen] Sesión fantasma detectada. Limpiando AuthProvider.');
+      await authProvider.logout();
+      if (mounted) {
+        setState(() => _mostrarFormularioManual = true);
       }
     }
   }
@@ -332,6 +359,7 @@ class _LoginScreenState extends State<LoginScreen> {
           rol: usuario.rol,
           fotoBase64: usuario.fotoBase64,
         );
+        marcarLoginExitoso();
         await _cargarDatosPostLogin();
         if (mounted) {
           Navigator.pushReplacement(
@@ -339,6 +367,17 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         }
+      }
+    } on CredencialesInvalidasException catch (e) {
+      await _api.eliminarCredenciales();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.mensaje),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       final creds = await _api.obtenerCredenciales();
@@ -348,6 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (savedUser != null && savedPass != null && savedUser == user && savedPass == pass) {
         await _cargarDatosIniciales();
         if (mounted) {
+          marcarLoginExitoso();
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -377,14 +417,36 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     final authProvider = context.read<AuthProvider>();
+
+    // PRIMERO: validar que el token existe en el storage (no solo en memoria).
+    // Si el interceptor lo borró tras un 401, la huella no debe dejar entrar.
+    final tokenEnStorage = await _api.obtenerToken();
+    if (tokenEnStorage == null || tokenEnStorage.isEmpty) {
+      await authProvider.logout();
+      if (mounted) {
+        setState(() => _mostrarFormularioManual = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sesión expirada. Inicia sesión con tu contraseña.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
     if (!authProvider.isAuthenticated || !authProvider.tokenValid) {
       await _validarSesionLocal();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sesión expirada. Inicia sesión con tu contraseña.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        setState(() => _mostrarFormularioManual = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sesión expirada. Inicia sesión con tu contraseña.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
 
@@ -401,6 +463,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (exito && mounted) {
       await _cargarDatosIniciales();
       if (mounted) {
+        marcarLoginExitoso();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -615,7 +678,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 24),
-                            const Text('Zentri',
+              const Text('Zentri',
                   style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1e293b))),
               const Text('Vendedor', style: TextStyle(fontSize: 16, color: Colors.grey)),
               const SizedBox(height: 40),
@@ -624,7 +687,6 @@ class _LoginScreenState extends State<LoginScreen> {
               else
                 _buildFormularioManual(),
               const SizedBox(height: 16),
-                            // Botón de diagnóstico: solo en debug, oculto en release.
               if (kDebugMode)
                 TextButton.icon(
                   onPressed: () {
@@ -667,15 +729,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-               const SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text('Versión 1.0.0', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
               const SizedBox(height: 8),
               TextButton.icon(
                 icon: const Icon(Icons.swap_horiz, size: 16),
                 label: const Text('Cambiar empresa'),
-                  onPressed: () async {
-                  // Cerrar sesión + borrar credenciales locales antes de cambiar
-                  // de empresa. Si no, el token viejo apunta a otro servidor.
+                onPressed: () async {
                   try {
                     await context.read<AuthProvider>().logout();
                     await _api.logout();
@@ -733,7 +793,7 @@ class MyApp extends StatelessWidget {
             context.read<SyncProvider>(),
           )..cargarCotizaciones(forceRefresh: false),
         ),
-                ChangeNotifierProvider(
+        ChangeNotifierProvider(
           create: (context) => CuentasPorCobrarProvider(
             context.read<SyncProvider>(),
           )..cargarMisDeudores(forceRefresh: false),
@@ -743,17 +803,16 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: zentriNavigatorKey,
         title: 'Zentri Vendedor',
         builder: (context, child) => _WatcherBootstrap(child: child!),
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1e293b)),
           useMaterial3: true,
         ),
-                home: ApiConfig.instance.hayEmpresa
+        home: ApiConfig.instance.hayEmpresa
             ? const LoginScreen()
             : CodigoEmpresaScreen(onConfigurado: (ctx) {
-                // Una vez configurada, navega al Login sin reconstruir
-                // todo el árbol de widgets (evita el cuelgue de runApp).
                 Navigator.of(ctx).pushReplacement(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
@@ -779,9 +838,6 @@ class MyApp extends StatelessWidget {
 // ============================================================
 // BOOTSTRAP DEL VIGILANTE DE CONEXIÓN
 // ============================================================
-// Arranca ConnectionWatcher una sola vez, después de que el árbol
-// de widgets esté montado. Así el watcher queda escuchando cambios
-// de red y sincroniza pendientes cuando vuelve la señal.
 class _WatcherBootstrap extends StatefulWidget {
   final Widget child;
   const _WatcherBootstrap({required this.child});
@@ -794,6 +850,16 @@ class _WatcherBootstrapState extends State<_WatcherBootstrap> {
   @override
   void initState() {
     super.initState();
+    sesionRevocadaCallback = () {
+      final nav = zentriNavigatorKey.currentState;
+      if (nav != null) {
+        nav.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    };
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {

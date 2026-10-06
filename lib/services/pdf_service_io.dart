@@ -1,11 +1,11 @@
-import 'package:zentri_vendedor/config/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:zentri_vendedor/config/api_config.dart';
+import 'package:zentri_vendedor/services/api_dio.dart';
 
 
 class PdfService {
@@ -16,21 +16,10 @@ class PdfService {
     String numeroFactura,
   ) async {
     try {
-      final storage = FlutterSecureStorage();
-      final token = await storage.read(key: 'access_token') ?? '';
-      if (token.isEmpty) {
-        throw Exception('No hay token de autenticación');
-      }
-
-      final Dio dio = Dio();
-      if (kIsWeb) {
-        dio.options.extra['withCredentials'] = false;
-      }
-
-      final response = await dio.get(
+      // Dio compartido: ya inyecta el token y detecta el 401.
+      final response = await ApiDio.instance.get(
         '$baseUrl/api/factura_pdf/$numeroFactura',
         options: Options(
-          headers: {'Authorization': 'Bearer $token'},
           responseType: ResponseType.bytes,
         ),
       );
@@ -80,21 +69,10 @@ class PdfService {
     int cotizacionId,
   ) async {
     try {
-      final storage = FlutterSecureStorage();
-      final token = await storage.read(key: 'access_token') ?? '';
-      if (token.isEmpty) {
-        throw Exception('No hay token de autenticación');
-      }
-
-      final Dio dio = Dio();
-      if (kIsWeb) {
-        dio.options.extra['withCredentials'] = false;
-      }
-
-      final response = await dio.get(
+      // Dio compartido: ya inyecta el token y detecta el 401.
+      final response = await ApiDio.instance.get(
         '$baseUrl/api/cotizacion_pdf/$cotizacionId',
         options: Options(
-          headers: {'Authorization': 'Bearer $token'},
           responseType: ResponseType.bytes,
         ),
       );
@@ -141,14 +119,11 @@ class PdfService {
 
   static Future<List<int>?> obtenerPDF(String endpoint, String token) async {
     try {
-      final Dio dio = Dio();
-      if (kIsWeb) {
-        dio.options.extra['withCredentials'] = false;
-      }
-      final response = await dio.get(
+      // Dio compartido: ya inyecta el token por defecto.
+      // El parámetro `token` se conserva por compatibilidad de firma.
+      final response = await ApiDio.instance.get(
         '$baseUrl/api/$endpoint',
         options: Options(
-          headers: {'Authorization': 'Bearer $token'},
           responseType: ResponseType.bytes,
         ),
       );

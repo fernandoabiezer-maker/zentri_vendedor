@@ -1,28 +1,13 @@
-import 'package:zentri_vendedor/config/api_config.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:zentri_vendedor/models/cotizacion.dart';
 import 'package:zentri_vendedor/models/item_cotizacion.dart';
+import 'package:zentri_vendedor/services/api_dio.dart';
 import 'dart:convert';
 
 class CotizacionService {
-  final Dio _dio = Dio();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-
-  CotizacionService() {
-    _dio.options.baseUrl = ApiConfig.instance.baseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 3);
-    _dio.options.receiveTimeout = const Duration(seconds: 3);
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'access_token');
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-    ));
-  }
+  /// Dio compartido con interceptor global de 401.
+  /// Si el server revoca la sesión, ApiDio dispara el logout automático.
+  final Dio _dio = ApiDio.instance;
 
   Future<Map<String, dynamic>> listarCotizaciones({
     int page = 1,

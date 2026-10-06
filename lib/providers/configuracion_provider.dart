@@ -1,16 +1,16 @@
-import 'package:zentri_vendedor/config/api_config.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:zentri_vendedor/services/configuracion_service.dart';
+import 'package:zentri_vendedor/services/api_dio.dart';
 import 'package:zentri_vendedor/database/sync_database_helper.dart';
 
 class ConfiguracionProvider extends ChangeNotifier {
   final ConfiguracionService _service = ConfiguracionService();
   final SyncDatabaseHelper _dbHelper = SyncDatabaseHelper();
 
-  final Dio _dio = Dio();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  /// Dio compartido con interceptor global de 401.
+  /// Si el server revoca la sesión, ApiDio dispara el logout automático.
+  final Dio _dio = ApiDio.instance;
 
   String _colorPrimario = '#1E40AF';
   String _fuente = 'helvetica';
@@ -48,18 +48,7 @@ class ConfiguracionProvider extends ChangeNotifier {
   String? get nombreEmpresa => _nombreEmpresa;
 
   ConfiguracionProvider() {
-    _dio.options.baseUrl = ApiConfig.instance.baseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'access_token');
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-    ));
+    // Usa el Dio compartido de la app (con interceptor global de 401).
     _inicializar();
   }
 
