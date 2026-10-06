@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:zentri_vendedor/screens/catalogo_screen.dart';
@@ -624,14 +624,15 @@ class _LoginScreenState extends State<LoginScreen> {
               else
                 _buildFormularioManual(),
               const SizedBox(height: 16),
-              // Botón de diagnóstico
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _mostrarDiagnostico = !_mostrarDiagnostico;
-                    if (_mostrarDiagnostico) {
-                      final auth = context.read<AuthProvider>();
-                      _diagnostico = '''
+                            // Botón de diagnóstico: solo en debug, oculto en release.
+              if (kDebugMode)
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _mostrarDiagnostico = !_mostrarDiagnostico;
+                      if (_mostrarDiagnostico) {
+                        final auth = context.read<AuthProvider>();
+                        _diagnostico = '''
 📊 DIAGNÓSTICO:
 • Sesión: ${auth.isAuthenticated ? "SÍ" : "NO"}
 • Token válido: ${auth.tokenValid ? "SÍ" : "NO"}
@@ -642,14 +643,14 @@ class _LoginScreenState extends State<LoginScreen> {
 • Token guardado: ${auth.token != null ? "SÍ (${auth.token!.substring(0, 10)}...)" : "NO"}
 • Platform: ${kIsWeb ? "Web" : "Móvil"}
 ''';
-                    }
-                  });
-                },
-                icon: const Icon(Icons.bug_report, size: 18),
-                label: const Text('Diagnóstico'),
-                style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
-              ),
-              if (_mostrarDiagnostico)
+                      }
+                    });
+                  },
+                  icon: const Icon(Icons.bug_report, size: 18),
+                  label: const Text('Diagnóstico'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
+                ),
+              if (kDebugMode && _mostrarDiagnostico)
                 Container(
                   margin: const EdgeInsets.only(top: 8),
                   padding: const EdgeInsets.all(12),
@@ -666,14 +667,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                            const SizedBox(height: 16),
+               const SizedBox(height: 16),
               Text('Versión 1.0.0', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
               const SizedBox(height: 8),
               TextButton.icon(
                 icon: const Icon(Icons.swap_horiz, size: 16),
                 label: const Text('Cambiar empresa'),
-                onPressed: () async {
-                  // Borra el slug guardado y vuelve a la pantalla de configurar.
+                  onPressed: () async {
+                  // Cerrar sesión + borrar credenciales locales antes de cambiar
+                  // de empresa. Si no, el token viejo apunta a otro servidor.
+                  try {
+                    await context.read<AuthProvider>().logout();
+                    await _api.logout();
+                  } catch (_) {}
                   await ApiConfig.instance.borrarEmpresa();
                   if (!context.mounted) return;
                   Navigator.of(context).pushReplacement(
@@ -737,7 +743,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Zentri Vendedor - HIFERCO',
+        title: 'Zentri Vendedor',
         builder: (context, child) => _WatcherBootstrap(child: child!),
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1e293b)),
