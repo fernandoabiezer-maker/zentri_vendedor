@@ -38,6 +38,7 @@ import 'package:zentri_vendedor/providers/producto_provider.dart';
 import 'package:zentri_vendedor/utils/logger.dart';
 import 'package:zentri_vendedor/screens/home_screen.dart';
 import 'package:zentri_vendedor/screens/suspendido_screen.dart';
+import 'package:zentri_vendedor/services/update_service.dart';
 
 
 // ============================================================
@@ -880,7 +881,87 @@ class _WatcherBootstrapState extends State<_WatcherBootstrap> {
       } catch (e) {
         AppLogger.log('❌ [Bootstrap] Error iniciando ConnectionWatcher: $e');
       }
+      _verificarActualizacion();
     });
+  }
+
+  Future<void> _verificarActualizacion() async {
+    try {
+      final update = await UpdateService.verificarActualizacion();
+      if (update == null) return;
+
+      // Esperar unos segundos para que el usuario ya este en el home
+      // (si el dialogo sale durante el login, se descarta al cambiar de pantalla).
+      await Future.delayed(const Duration(seconds: 10));
+      if (!mounted) return;
+
+      final navCtx = zentriNavigatorKey.currentContext;
+      if (navCtx == null) return;
+
+      final versionNueva = update['version'] as String;
+      final urlApk = update['url'] as String;
+
+      final confirmar = await showDialog<bool>(
+        context: navCtx,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Actualizacion disponible'),
+          content: Text(
+            'Hay una version nueva (v$versionNueva) de Zentri Vendedor. '
+            'Deseas actualizar ahora?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Mas tarde'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Actualizar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar != true) return;
+
+      showDialog(
+        context: navCtx,
+        barrierDismissible: false,
+        builder: (ctx) => const AlertDialog(
+          title: Text('Descargando actualizacion'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Por favor espera, no cierres la app...'),
+            ],
+          ),
+        ),
+      );
+
+      final ruta = await UpdateService.descargarApk(urlApk);
+      Navigator.of(navCtx, rootNavigator: true).pop();
+
+      if (ruta == null) {
+        ScaffoldMessenger.of(navCtx).showSnackBar(
+          const SnackBar(content: Text('Error al descargar. Intenta mas tarde.')),
+        );
+        return;
+      }
+
+      final ok = await UpdateService.instalarApk(ruta);
+      if (!ok) {
+        ScaffoldMessenger.of(navCtx).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir el instalador. Verifica los permisos.'),
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.log('X [Update] Error: $e');
+    }
   }
 
   @override

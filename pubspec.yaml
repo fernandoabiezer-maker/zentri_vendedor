@@ -1,7 +1,7 @@
 name: zentri_vendedor
 description: "App móvil para vendedores de HIFERCO - Zentri"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.5.3
@@ -16,6 +16,8 @@ dependencies:
   provider: ^6.1.1
   sqflite: ^2.3.2
   path_provider: ^2.1.1
+  package_info_plus: ^8.0.0
+  open_filex: ^4.5.0
   share_plus: ^9.0.0          # ✅ VUELVE A LA VERSIÓN QUE FUNCIONABA
   url_launcher: ^6.2.1
   universal_io: ^2.2.2
