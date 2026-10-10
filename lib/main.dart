@@ -37,6 +37,7 @@ import 'package:zentri_vendedor/providers/notificaciones_cobro_provider.dart';
 import 'package:zentri_vendedor/providers/producto_provider.dart';
 import 'package:zentri_vendedor/utils/logger.dart';
 import 'package:zentri_vendedor/screens/home_screen.dart';
+import 'package:zentri_vendedor/screens/suspendido_screen.dart';
 
 
 // ============================================================
@@ -855,6 +856,16 @@ class _WatcherBootstrapState extends State<_WatcherBootstrap> {
       if (nav != null) {
         nav.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    };
+
+    suspendidoCallback = () {
+      final nav = zentriNavigatorKey.currentState;
+      if (nav != null) {
+        nav.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SuspendidoScreen()),
           (route) => false,
         );
       }

@@ -11,23 +11,32 @@ final GlobalKey<NavigatorState> zentriNavigatorKey = GlobalKey<NavigatorState>()
 
 /// Bandera global para evitar múltiples redirecciones en cascada
 /// cuando varios requests reciben 401 al mismo tiempo.
-///
-/// IMPORTANTE: NO se resetea con un timer. Solo se resetea cuando el
-/// usuario hace login exitoso (ver `marcarLoginExitoso()`). Esto evita
-/// un bucle infinito si hay varios providers pidiendo al server al
-/// mismo tiempo después del primer 401.
 bool _sesionYaRevocada = false;
+
+/// Bandera global para evitar múltiples redirecciones cuando el
+/// cliente está suspendido por falta de pago. El backend devuelve
+/// 200 con {suspendido: true} en TODAS las rutas /api/*.
+bool _suspendidoDetectado = false;
 
 /// Callback que el main.dart registra para navegar al Login.
 /// Se ejecuta cuando el interceptor detecta 401 (sesión revocada).
 typedef SesionRevocadaCallback = void Function();
 SesionRevocadaCallback? sesionRevocadaCallback;
 
-/// Resetear la bandera (uso interno: llamar al hacer login exitoso).
+/// Callback que el main.dart registra para navegar a la pantalla de
+/// suspensión. Se ejecuta cuando el interceptor detecta suspendido: true.
+typedef SuspendidoCallback = void Function();
+SuspendidoCallback? suspendidoCallback;
+
+/// Resetear las banderas (uso interno: llamar al hacer login exitoso).
 void marcarLoginExitoso() {
   _sesionYaRevocada = false;
-  AppLogger.log('🔓 [ApiDio] Login exitoso. Se permite de nuevo navegar por 401.');
+  _suspendidoDetectado = false;
+  AppLogger.log('🔓 [ApiDio] Login exitoso. Banderas reseteadas.');
 }
+
+/// Verificar si ya se detectó suspensión (para evitar redirigir varias veces).
+bool get suspendidoDetectado => _suspendidoDetectado;
 
 /// Cliente Dio compartido por TODA la app.
 class ApiDio {
@@ -36,9 +45,6 @@ class ApiDio {
 
   static Dio _crear() {
     final dio = Dio();
-    // Nota: el baseUrl se actualiza dinámicamente en cada request
-    // (ver onRequest más abajo), porque ApiConfig puede terminar de
-    // cargarse DESPUÉS de crear este Dio.
     dio.options.connectTimeout = const Duration(seconds: 10);
     dio.options.receiveTimeout = const Duration(seconds: 20);
 
@@ -48,14 +54,24 @@ class ApiDio {
 
     final storage = const FlutterSecureStorage();
 
+    /// Helper que revisa si la respuesta indica suspensión y dispara
+    /// el callback una sola vez.
+    void _revisarSuspension(dynamic data) {
+      if (_suspendidoDetectado) return;
+      if (data is Map && data['suspendido'] == true) {
+        _suspendidoDetectado = true;
+        AppLogger.log('🔒 [ApiDio] Suspensión detectada. Redirigiendo.');
+        try {
+          suspendidoCallback?.call();
+        } catch (_) {}
+      }
+    }
+
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        // ─────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────
         // ACTUALIZAR baseUrl EN CADA REQUEST
-        // ApiConfig.instance puede no estar cargado cuando este
-        // Dio se creó por primera vez. Aquí siempre leemos la URL
-        // actual y la aplicamos.
-        // ─────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────
         final baseUrlActual = ApiConfig.instance.baseUrl;
         if (baseUrlActual.isNotEmpty && options.baseUrl != baseUrlActual) {
           options.baseUrl = baseUrlActual;
@@ -67,11 +83,22 @@ class ApiDio {
         }
         return handler.next(options);
       },
+
+      onResponse: (response, handler) async {
+        // El backend devuelve 200 con {suspendido: true} cuando el
+        // cliente está suspendido. Detectarlo y disparar callback.
+        _revisarSuspension(response.data);
+        return handler.next(response);
+      },
+
       onError: (error, handler) async {
         final code = error.response?.statusCode;
         final path = error.requestOptions.path;
         final esEndpointAuth =
             path.contains('/login') || path.contains('/logout');
+
+        // Suspensión puede venir también como error en algunas rutas.
+        _revisarSuspension(error.response?.data);
 
         if (code == 401 && !esEndpointAuth && !_sesionYaRevocada) {
           _sesionYaRevocada = true;

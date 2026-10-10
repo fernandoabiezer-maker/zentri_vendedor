@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/release
 fix_plan_inicial.ps1 
 *.bak 
+
+# Backups locales
+*.bak-*
