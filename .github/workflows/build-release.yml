@@ -43,6 +43,10 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
           echo "storeFile=zentri-upload-key.jks" >> key.properties
 
+      - name: Comentar gradle.java.home (Windows-only)
+        run: |
+          sed -i 's|^org.gradle.java.home=.*|# &|' android/gradle.properties
+
       - name: Compilar APK release
         run: flutter build apk --release
 
