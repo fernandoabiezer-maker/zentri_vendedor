@@ -1,7 +1,7 @@
 name: zentri_vendedor
 description: "App móvil para vendedores de HIFERCO - Zentri"
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.3+4
 
 environment:
   sdk: ^3.5.3
