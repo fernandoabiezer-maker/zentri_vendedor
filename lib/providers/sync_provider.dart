@@ -174,12 +174,14 @@ class SyncProvider extends ChangeNotifier {
         nombre: i['nombre'] ?? 'Producto',
         cantidad: (i['cantidad'] as num?)?.toDouble() ?? 1.0,
         precio: (i['precio_venta'] as num?)?.toDouble() ?? 0.0,
+        precioBase: (i['precio_venta'] as num?)?.toDouble(),
         codigo: i['codigo'] ?? '',
         imagen: i['imagen'] ?? '',
       )).toList();
 
       final result = await _ventaService.finalizarVenta(
         items: items,
+        idLocal: payload['id_local'] as String?,
         clienteId: payload['cliente_id'] ?? 0,
         tipoVenta: payload['tipo_venta'] ?? 'contado',
         metodoPago: payload['metodo_pago'] ?? 'efectivo_bs',
@@ -234,12 +236,14 @@ class SyncProvider extends ChangeNotifier {
             nombre: i['nombre'] ?? 'Producto',
             cantidad: (i['cantidad'] as num?)?.toDouble() ?? 1.0,
             precio: (i['precio_venta'] as num?)?.toDouble() ?? 0.0,
+            precioBase: (i['precio_venta'] as num?)?.toDouble(),
             codigo: i['codigo'] ?? '',
             imagen: i['imagen'] ?? '',
           )).toList();
 
           final result = await _ventaService.finalizarVenta(
             items: items,
+            idLocal: payload['id_local'] as String?,
             clienteId: payload['cliente_id'] ?? 0,
             tipoVenta: payload['tipo_venta'] ?? 'contado',
             metodoPago: payload['metodo_pago'] ?? 'efectivo_bs',
@@ -322,7 +326,8 @@ class SyncProvider extends ChangeNotifier {
         nombre: i['nombre'] ?? 'Producto',
         codigo: i['codigo'] ?? '',
         cantidad: (i['cantidad'] as num?)?.toDouble() ?? 1.0,
-        precioUnitario: (i['precio_unitario'] as num?)?.toDouble() ?? 0.0,
+        precioUnitario: ((i['precio_final'] ?? i['precio_unitario']) as num?)?.toDouble() ?? 0.0,
+        precioBase: (i['precio_unitario'] as num?)?.toDouble(),
         imagen: i['imagen'],
       )).toList();
 
@@ -389,7 +394,8 @@ class SyncProvider extends ChangeNotifier {
             nombre: i['nombre'] ?? 'Producto',
             codigo: i['codigo'] ?? '',
             cantidad: (i['cantidad'] as num?)?.toDouble() ?? 1.0,
-            precioUnitario: (i['precio_unitario'] as num?)?.toDouble() ?? 0.0,
+            precioUnitario: ((i['precio_final'] ?? i['precio_unitario']) as num?)?.toDouble() ?? 0.0,
+            precioBase: (i['precio_unitario'] as num?)?.toDouble(),
             imagen: i['imagen'],
           )).toList();
 

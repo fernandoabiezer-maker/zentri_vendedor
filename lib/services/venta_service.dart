@@ -17,6 +17,7 @@ class VentaService {
     required int diasCredito,
     required String referencia,
     required String usuarioNombre,
+    String? idLocal,
     Map<String, double>? pagoMixtoDetalle,
     Map<String, dynamic>? planCuotas,
   }) async {
@@ -35,6 +36,11 @@ class VentaService {
       'referencia': referencia,
       'usuario_nombre': usuarioNombre,
     };
+
+    // Clave de idempotencia: el servidor puede descartar reintentos duplicados.
+    if (idLocal != null && idLocal.isNotEmpty) {
+      payload['id_local'] = idLocal;
+    }
 
     // Solo se incluye cuando el pago es mixto y hay desglose.
     if (metodoPago == 'mixto' &&

@@ -113,7 +113,7 @@ class SyncDatabaseHelper {
     final path = '${directory.path}/zentri_sync.db';
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -163,6 +163,7 @@ class SyncDatabaseHelper {
         codigo TEXT,
         nombre TEXT,
         precio REAL,
+        precio_base REAL,
         stock REAL,
         categoria TEXT,
         imagen TEXT,
@@ -286,6 +287,7 @@ class SyncDatabaseHelper {
           codigo TEXT,
           nombre TEXT,
           precio REAL,
+          precio_base REAL,
           stock REAL,
           categoria TEXT,
           imagen TEXT,
@@ -439,6 +441,11 @@ class SyncDatabaseHelper {
           estado TEXT DEFAULT 'pendiente'
         )
       ''');
+    }
+    if (oldVersion < 13) {
+      try {
+        await db.execute('ALTER TABLE productos ADD COLUMN precio_base REAL');
+      } catch (e) {}
     }
   }
 
@@ -614,6 +621,7 @@ class SyncDatabaseHelper {
           'codigo': p.codigo,
           'nombre': p.nombre,
           'precio': p.precio,
+          'precio_base': p.precioBase,
           'stock': p.stock,
           'categoria': p.categoria,
           'imagen': p.imagen,

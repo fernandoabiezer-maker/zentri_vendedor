@@ -655,6 +655,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         diasCredito: _tipoVenta == 'credito' ? _diasCredito : 0,
         referencia: _referencia,
         usuarioNombre: usuarioNombre,
+        idLocal: idLocal,
         pagoMixtoDetalle: pagoMixtoDetalle,
         planCuotas: planCuotas,
       );
