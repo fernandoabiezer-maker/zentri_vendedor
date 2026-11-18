@@ -257,7 +257,8 @@ class CotizacionProvider extends ChangeNotifier {
         'nombre': i.nombre,
         'codigo': i.codigo,
         'cantidad': i.cantidad,
-        'precio_unitario': i.precioUnitario,
+        'precio_unitario': i.precioParaVenta,
+        'precio_final': i.precioUnitario,
         'imagen': i.imagen,
       }).toList(),
       'vendedor_id': vendedorId,
@@ -343,7 +344,8 @@ class CotizacionProvider extends ChangeNotifier {
         'nombre': i.nombre,
         'codigo': i.codigo,
         'cantidad': i.cantidad,
-        'precio_unitario': i.precioUnitario,
+        'precio_unitario': i.precioParaVenta,
+        'precio_final': i.precioUnitario,
         'imagen': i.imagen,
       }).toList(),
       'vendedor_id': vendedorId,
@@ -446,6 +448,7 @@ class CotizacionProvider extends ChangeNotifier {
         codigo: item.codigo,
         cantidad: (item.cantidad is num && item.cantidad.isFinite) ? item.cantidad : 0.0,
         precioUnitario: (item.precioUnitario is num && item.precioUnitario.isFinite) ? item.precioUnitario : 0.0,
+        precioBase: item.precioBase,
         imagen: item.imagen,
       )
     ).toList();

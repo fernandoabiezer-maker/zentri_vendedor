@@ -146,6 +146,8 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   // ============================================================
   void _mostrarDialogoCantidad(BuildContext context, Producto producto, Color color) {
     String cantidadTexto = '1';
+    // Tasa paralelo vigente para mostrar el precio en bolívares.
+    final tasaParalelo = context.read<TasasProvider>().tasaParalelo;
     // Contador de versión: se incrementa con cada toque +/- para forzar
     // que el TextFormField se recree y aplique el nuevo initialValue.
     int cantidadVersion = 0;
@@ -171,6 +173,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   Text('Código: ${producto.codigo}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 8),
                   Text('Precio unitario: \$${producto.precio.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14)),
+                  if (tasaParalelo > 0) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${(producto.precio * tasaParalelo).toStringAsFixed(2)} Bs',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -225,6 +234,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                     'Subtotal: \$${subtotal.toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
+                  if (tasaParalelo > 0) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${(subtotal * tasaParalelo).toStringAsFixed(2)} Bs',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ],
                 ],
               ),
               actions: [
@@ -250,6 +266,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                       nombre: producto.nombre,
                       codigo: producto.codigo,
                       precio: producto.precio,
+                      precioBase: producto.precioBase,
                       imagen: producto.imagen,
                       cantidad: cant,
                     );

@@ -249,6 +249,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               codigo: item.codigo,
                               cantidad: item.cantidad,
                               precioUnitario: item.precio,
+                              precioBase: item.precioBase,
                               imagen: item.imagen,
                             )).toList();
 
@@ -818,6 +819,7 @@ class _CarritoItemWidgetState extends State<_CarritoItemWidget> {
                               nombre: item.nombre,
                               codigo: item.codigo,
                               precio: precioUnitario,
+                              precioBase: item.precioBase,
                               imagen: item.imagen,
                               cantidad: cant,
                             );

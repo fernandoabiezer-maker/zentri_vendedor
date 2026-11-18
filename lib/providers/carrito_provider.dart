@@ -52,6 +52,7 @@ class CarritoProvider extends ChangeNotifier {
     required String nombre,
     required String codigo,
     required double precio,
+    double? precioBase,
     String? imagen,
     double cantidad = 1.0,
   }) {
@@ -66,6 +67,7 @@ class CarritoProvider extends ChangeNotifier {
         nombre: nombre,
         codigo: codigo,
         precio: precio,
+        precioBase: precioBase,
         imagen: imagen,
         cantidad: cantidad,
       ));
@@ -133,6 +135,7 @@ class CarritoProvider extends ChangeNotifier {
         nombre: item.nombre,
         codigo: item.codigo,
         precio: item.precioUnitario,
+        precioBase: item.precioBase,
         imagen: item.imagen,
         cantidad: item.cantidad,
       ));

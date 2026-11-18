@@ -134,6 +134,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           codigo: item.codigo,
           cantidad: cant,
           precioUnitario: precio,
+          precioBase: item.precioBase,
           imagen: item.imagen,
         );
       }).toList();
@@ -300,6 +301,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
         codigo: producto.codigo,
         cantidad: 1.0,
         precioUnitario: producto.precio,
+        precioBase: producto.precioBase,
         imagen: producto.imagen,
       ));
       AppLogger.log('📦 [CotizacionForm] Producto agregado: ${producto.nombre}, items: ${_items.length}');

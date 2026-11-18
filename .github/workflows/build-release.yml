@@ -2,7 +2,7 @@ name: Build & Release APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'fix/**']
     paths-ignore:
       - "**.md"
       - ".gitignore"
@@ -57,6 +57,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Crear release en repo APK
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}

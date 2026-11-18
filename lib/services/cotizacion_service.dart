@@ -92,7 +92,8 @@ class CotizacionService {
           'nombre': i.nombre,
           'codigo': i.codigo,
           'cantidad': i.cantidad,
-          'precio_unitario': i.precioUnitario,
+          'precio_unitario': i.precioParaVenta,
+          'precio_final': i.precioUnitario,
           'imagen': i.imagen,
         }).toList(),
       };
@@ -150,7 +151,8 @@ class CotizacionService {
           'nombre': i.nombre,
           'codigo': i.codigo,
           'cantidad': i.cantidad,
-          'precio_unitario': i.precioUnitario,
+          'precio_unitario': i.precioParaVenta,
+          'precio_final': i.precioUnitario,
           'imagen': i.imagen,
         }).toList(),
       };

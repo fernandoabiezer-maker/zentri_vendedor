@@ -2,7 +2,14 @@ class ItemCarrito {
   final int productoId;
   final String nombre;
   final String codigo;
+
+  /// Precio de venta al público (con IVA). Es el que se muestra.
   final double precio;
+
+  /// Precio base sin IVA. Es el que se envía al servidor al vender.
+  /// Si no está disponible, se usa [precio] para no romper datos viejos.
+  final double? precioBase;
+
   final String? imagen;
   double cantidad;
 
@@ -11,9 +18,14 @@ class ItemCarrito {
     required this.nombre,
     required this.codigo,
     required this.precio,
+    this.precioBase,
     this.imagen,
     this.cantidad = 1.0,
   });
+
+  /// Precio que debe viajar al backend: base si la conocemos.
+  double get precioParaVenta =>
+      (precioBase != null && precioBase! > 0) ? precioBase! : precio;
 
   double get subtotal => precio * cantidad;
 
@@ -22,6 +34,7 @@ class ItemCarrito {
     String? nombre,
     String? codigo,
     double? precio,
+    double? precioBase,
     String? imagen,
     double? cantidad,
   }) {
@@ -30,6 +43,7 @@ class ItemCarrito {
       nombre: nombre ?? this.nombre,
       codigo: codigo ?? this.codigo,
       precio: precio ?? this.precio,
+      precioBase: precioBase ?? this.precioBase,
       imagen: imagen ?? this.imagen,
       cantidad: cantidad ?? this.cantidad,
     );
@@ -41,6 +55,7 @@ class ItemCarrito {
       'nombre': nombre,
       'codigo': codigo,
       'precio': precio,
+      'precioBase': precioBase,
       'imagen': imagen,
       'cantidad': cantidad,
     };
@@ -52,6 +67,7 @@ class ItemCarrito {
       nombre: json['nombre'],
       codigo: json['codigo'],
       precio: (json['precio'] as num).toDouble(),
+      precioBase: (json['precioBase'] as num?)?.toDouble(),
       imagen: json['imagen'],
       cantidad: (json['cantidad'] as num?)?.toDouble() ?? 1.0,
     );

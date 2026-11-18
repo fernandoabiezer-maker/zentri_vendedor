@@ -25,7 +25,7 @@ class VentaService {
         'id': item.productoId,
         'nombre': item.nombre,
         'cantidad': item.cantidad,
-        'precio_venta': item.precio,
+        'precio_venta': item.precioParaVenta,
         'costo_actual': 0,
       }).toList(),
       'cliente_id': clienteId,
